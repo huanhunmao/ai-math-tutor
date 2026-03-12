@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# frontend
+frontend/node_modules
+frontend/dist
+frontend/.env
+
+# backend
+backend/venv
+backend/__pycache__
+backend/.env
+backend/math_tutor.db
+backend/*.db
+
+# python cache
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# logs
+*.log
+
+# IDE
+.vscode
+.idea
