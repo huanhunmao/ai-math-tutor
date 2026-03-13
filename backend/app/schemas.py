@@ -99,3 +99,15 @@ class StudentItem(BaseModel):
 
 class CreateStudentRequest(BaseModel):
     name: str
+
+class KnowledgeGraphItem(BaseModel):
+    knowledge_name: str
+    total_count: int
+    wrong_count: int
+    correct_count: int
+    wrong_rate: float
+
+
+class KnowledgeGraphResponse(BaseModel):
+    student_id: int
+    items: List[KnowledgeGraphItem]

@@ -15,9 +15,20 @@ class QuestionHistory(Base):
     is_wrong = Column(Boolean, default=False, nullable=False)
     student_id = Column(Integer, ForeignKey("student.id"), nullable=False,
                         default=1)
+    matched_knowledge = Column(Text, nullable=False, default="[]")
 
 class Student(Base):
     __tablename__ = "student"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(Text, nullable=False)
+
+class StudentKnowledgeStat(Base):
+    __tablename__ = "student_knowledge_stat"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("student.id"), nullable=False, index=True)
+    knowledge_name = Column(Text, nullable=False, index=True)
+    total_count = Column(Integer, nullable=False, default=0)
+    wrong_count = Column(Integer, nullable=False, default=0)
+    correct_count = Column(Integer, nullable=False, default=0)

@@ -155,3 +155,32 @@ export function createStudent(name: string) {
 export function getExportReportUrl(student_id: number) {
   return `http://127.0.0.1:8000/api/export/report?student_id=${student_id}`;
 }
+
+export function rebuildRagIndex() {
+  return request.post("/api/rag/rebuild");
+}
+
+export interface KnowledgeGraphItem {
+  knowledge_name: string;
+  total_count: number;
+  wrong_count: number;
+  correct_count: number;
+  wrong_rate: number;
+}
+
+export interface KnowledgeGraphResponse {
+  student_id: number;
+  items: KnowledgeGraphItem[];
+}
+
+export function getKnowledgeGraph(student_id: number) {
+  return request.get<KnowledgeGraphResponse>("/api/knowledge-graph", {
+    params: { student_id },
+  });
+}
+
+export function rebuildKnowledgeGraph(student_id: number) {
+  return request.post("/api/knowledge-graph/rebuild", null, {
+    params: { student_id },
+  });
+}

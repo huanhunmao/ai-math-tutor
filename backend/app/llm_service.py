@@ -2,6 +2,7 @@ import os
 import json
 from openai import OpenAI
 from dotenv import load_dotenv
+from app.rag_service import build_context, get_knowledge_titles
 
 load_dotenv()
 
@@ -17,7 +18,7 @@ client = OpenAI(
 SYSTEM_PROMPT = """
 你是一位专业的初中数学辅导老师。
 
-用户会输入一道数学题，请你严格返回 JSON，格式如下：
+请严格返回 JSON，格式如下：
 {
   "answer": "最终答案",
   "steps": ["步骤1", "步骤2", "步骤3"],
@@ -42,16 +43,30 @@ def solve_math_question(question: str):
     if not MODEL:
         raise ValueError("未读取到 OPENAI_MODEL")
 
+    context = build_context(question, top_k=3)
+    matched_knowledge = get_knowledge_titles(question, top_k=3)
+
+    user_content = f"题目：{question}"
+    if context:
+        user_content += f"\n\n以下是从数学知识库中检索到的参考内容，请优先基于这些内容解答：\n{context}"
+
     resp = client.chat.completions.create(
         model=MODEL,
         temperature=0.3,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"题目：{question}"},
+            {"role": "user", "content": user_content},
         ],
     )
 
     content = (resp.choices[0].message.content or "").strip()
+
+    if content.startswith("```json"):
+        content = content.removeprefix("```json").strip()
+    if content.startswith("```"):
+        content = content.removeprefix("```").strip()
+    if content.endswith("```"):
+        content = content.removesuffix("```").strip()
 
     if not content:
         raise ValueError("模型返回为空")
@@ -71,4 +86,5 @@ def solve_math_question(question: str):
     if not isinstance(data["knowledge_points"], list):
         raise ValueError(f"knowledge_points 不是数组：{data}")
 
+    data["matched_knowledge"] = matched_knowledge
     return data

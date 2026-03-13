@@ -39,10 +39,20 @@ from app.student_service import ensure_default_student, list_students, create_st
 from app.schemas import StudentItem, CreateStudentRequest
 
 from fastapi.responses import HTMLResponse
+from app.database import SessionLocal
+from app.rag_service import rebuild_index, ensure_index_ready
+
+from app.knowledge_graph_service import (
+    update_student_knowledge_stat,
+    rebuild_student_knowledge_stat,
+    get_student_knowledge_graph,
+)
+from app.schemas import KnowledgeGraphResponse
 
 Base.metadata.create_all(bind=engine)
+ensure_index_ready()
 
-from app.database import SessionLocal
+
 
 with SessionLocal() as db:
     ensure_default_student(db)
@@ -51,7 +61,7 @@ app = FastAPI(title="AI Math Tutor API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -84,6 +94,13 @@ def solve_question(
         db.add(row)
         db.commit()
         db.refresh(row)
+
+        update_student_knowledge_stat(
+            db=db,
+            student_id=student_id,
+            knowledge_points=result.get("knowledge_points", []),
+            is_wrong=False,
+        )
 
         return SolveQuestionResponse(
             id=row.id,
@@ -125,25 +142,32 @@ def get_history(
 
 @app.patch("/api/history/{question_id}/wrong", response_model=HistoryItem)
 def mark_wrong(question_id: int, body: MarkWrongRequest, db: Session = Depends(get_db)):
-    row = db.query(QuestionHistory).filter(QuestionHistory.id == question_id).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="记录不存在")
+    try:
+        row = db.query(QuestionHistory).filter(QuestionHistory.id == question_id).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="记录不存在")
 
-    row.is_wrong = body.is_wrong
-    db.commit()
-    db.refresh(row)
+        row.is_wrong = body.is_wrong
+        db.commit()
+        db.refresh(row)
 
-    return HistoryItem(
-        id=row.id,
-        question=row.question,
-        answer=row.answer,
-        steps=json.loads(row.steps),
-        knowledge_points=json.loads(row.knowledge_points),
-        similar_question=row.similar_question,
-        is_wrong=row.is_wrong,
-    )
+        rebuild_student_knowledge_stat(db, row.student_id)
 
-
+        return HistoryItem(
+            id=row.id,
+            question=row.question,
+            answer=row.answer,
+            steps=json.loads(row.steps),
+            knowledge_points=json.loads(row.knowledge_points),
+            similar_question=row.similar_question,
+            is_wrong=row.is_wrong,
+            matched_knowledge=json.loads(row.matched_knowledge or "[]"),
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 @app.get("/api/wrong-questions", response_model=list[HistoryItem])
 def get_wrong_questions(
     student_id: int = Query(1),
@@ -204,6 +228,13 @@ async def solve_image(
         db.add(row)
         db.commit()
         db.refresh(row)
+
+        update_student_knowledge_stat(
+            db=db,
+            student_id=student_id,
+            knowledge_points=result.get("knowledge_points", []),
+            is_wrong=False,
+        )
 
         return OCRSolveResponse(
             id=row.id,
@@ -481,3 +512,37 @@ def export_report_html(
     </html>
     """
     return html
+
+@app.post("/api/rag/rebuild")
+def rebuild_rag_index():
+    try:
+        result = rebuild_index()
+        return {
+            "message": "RAG 向量索引重建成功",
+            "count": result["count"],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/knowledge-graph", response_model=KnowledgeGraphResponse)
+def get_knowledge_graph(
+    student_id: int = Query(1),
+    db: Session = Depends(get_db),
+):
+    try:
+        result = get_student_knowledge_graph(db, student_id)
+        return KnowledgeGraphResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/knowledge-graph/rebuild")
+def rebuild_knowledge_graph(
+    student_id: int = Query(1),
+    db: Session = Depends(get_db),
+):
+    try:
+        rebuild_student_knowledge_stat(db, student_id)
+        return {"message": "知识图谱重建成功"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -24,6 +24,10 @@
     <button class="wrong-btn" @click="$emit('export-report')">
       导出练习单
     </button>
+
+    <button class="retry-btn" @click="$emit('rebuild-rag')">
+    重建知识库
+    </button>
   </div>
 </template>
 
@@ -42,6 +46,7 @@ const emit = defineEmits<{
   (e: 'student-change'): void
   (e: 'create-student'): void
   (e: 'export-report'): void
+  (e: 'rebuild-rag'): void
 }>()
 
 const onStudentChange = (event: Event) => {

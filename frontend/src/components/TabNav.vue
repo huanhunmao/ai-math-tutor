@@ -13,11 +13,11 @@
 
 <script setup lang="ts">
 defineProps<{
-  activeTab: 'solve' | 'history' | 'wrong' | 'report' | 'suggestion'
+  activeTab: 'solve' | 'history' | 'wrong' | 'report' | 'suggestion' | 'graph'
 }>()
 
 defineEmits<{
-  (e: 'change', value: 'solve' | 'history' | 'wrong' | 'report' | 'suggestion'): void
+  (e: 'change', value: 'solve' | 'history' | 'wrong' | 'report' | 'suggestion' | 'graph'): void
 }>()
 
 const tabList = [
@@ -26,6 +26,7 @@ const tabList = [
   { label: '错题本', value: 'wrong' },
   { label: '学习报告', value: 'report' },
   { label: '学习建议', value: 'suggestion' },
+  { label: '知识图谱', value: 'graph' },
 ] as const
 </script>
 

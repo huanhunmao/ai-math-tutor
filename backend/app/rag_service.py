@@ -2,8 +2,31 @@ import json
 import os
 from typing import List, Dict
 
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct
+from sentence_transformers import SentenceTransformer
+
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 DATA_PATH = os.path.join(BASE_DIR, "data", "math_knowledge.json")
+QDRANT_PATH = os.path.join(BASE_DIR, "qdrant_data")
+COLLECTION_NAME = "math_knowledge"
+
+_model = None
+_client = None
+
+
+def get_embedding_model():
+    global _model
+    if _model is None:
+        _model = SentenceTransformer("BAAI/bge-small-zh-v1.5")
+    return _model
+
+
+def get_qdrant_client():
+    global _client
+    if _client is None:
+        _client = QdrantClient(path=QDRANT_PATH)
+    return _client
 
 
 def load_knowledge_base() -> List[Dict]:
@@ -14,36 +37,113 @@ def load_knowledge_base() -> List[Dict]:
         return json.load(f)
 
 
-def score_item(question: str, item: Dict) -> int:
-    score = 0
-    text = f"{item.get('title', '')} {' '.join(item.get('keywords', []))} {item.get('content', '')}"
-
-    for kw in item.get("keywords", []):
-        if kw and kw in question:
-            score += 5
-
-    for ch in set(question):
-        if ch.strip() and ch in text:
-            score += 1
-
-    return score
+def build_doc_text(item: Dict) -> str:
+    parts = [
+        f"标题：{item.get('title', '')}",
+        f"关键词：{'、'.join(item.get('keywords', []))}",
+        f"内容：{item.get('content', '')}",
+    ]
+    return "\n".join(parts)
 
 
-def retrieve_knowledge(question: str, top_k: int = 3) -> List[Dict]:
+def ensure_collection():
+    client = get_qdrant_client()
+    model = get_embedding_model()
+    vector_size = model.get_sentence_embedding_dimension()
+
+    collections = client.get_collections().collections
+    exists = any(c.name == COLLECTION_NAME for c in collections)
+
+    if not exists:
+        client.create_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+        )
+
+
+def rebuild_index():
+    client = get_qdrant_client()
+    model = get_embedding_model()
+    ensure_collection()
+
     kb = load_knowledge_base()
-    scored = []
 
-    for item in kb:
-        score = score_item(question, item)
-        if score > 0:
-            scored.append((score, item))
+    client.delete_collection(collection_name=COLLECTION_NAME)
+    client.create_collection(
+        collection_name=COLLECTION_NAME,
+        vectors_config=VectorParams(
+            size=model.get_sentence_embedding_dimension(),
+            distance=Distance.COSINE,
+        ),
+    )
 
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return [item for _, item in scored[:top_k]]
+    if not kb:
+        return {"count": 0}
+
+    points = []
+    docs = [build_doc_text(item) for item in kb]
+    vectors = model.encode(docs, normalize_embeddings=True).tolist()
+
+    for idx, (item, vector, doc_text) in enumerate(zip(kb, vectors, docs), start=1):
+        points.append(
+            PointStruct(
+                id=idx,
+                vector=vector,
+                payload={
+                    "title": item.get("title", ""),
+                    "keywords": item.get("keywords", []),
+                    "content": item.get("content", ""),
+                    "doc_text": doc_text,
+                },
+            )
+        )
+
+    client.upsert(collection_name=COLLECTION_NAME, points=points)
+    return {"count": len(points)}
 
 
-def build_context(question: str) -> str:
-    items = retrieve_knowledge(question, top_k=3)
+def ensure_index_ready():
+    ensure_collection()
+    client = get_qdrant_client()
+    count_result = client.count(collection_name=COLLECTION_NAME, exact=True)
+    if count_result.count == 0:
+        rebuild_index()
+
+
+def retrieve_knowledge(question: str, top_k: int = 3):
+    ensure_index_ready()
+
+    client = get_qdrant_client()
+    model = get_embedding_model()
+
+    query_vector = model.encode(question, normalize_embeddings=True).tolist()
+
+    results = client.query_points(
+        collection_name=COLLECTION_NAME,
+        query=query_vector,
+        limit=top_k,
+        with_payload=True,
+    )
+
+    items = []
+
+    for item in results.points:
+        payload = item.payload or {}
+
+        items.append(
+            {
+                "title": payload.get("title", ""),
+                "keywords": payload.get("keywords", []),
+                "content": payload.get("content", ""),
+                "score": float(item.score),
+            }
+        )
+
+    return items
+
+
+def build_context(question: str, top_k: int = 3) -> str:
+    items = retrieve_knowledge(question, top_k=top_k)
     if not items:
         return ""
 
@@ -52,11 +152,13 @@ def build_context(question: str) -> str:
         parts.append(
             f"知识片段{idx}：\n"
             f"标题：{item['title']}\n"
+            f"关键词：{'、'.join(item.get('keywords', []))}\n"
             f"内容：{item['content']}\n"
+            f"相关度：{item['score']:.4f}\n"
         )
     return "\n".join(parts)
 
 
-def get_knowledge_titles(question: str) -> List[str]:
-    items = retrieve_knowledge(question, top_k=3)
-    return [item["title"] for item in items]
+def get_knowledge_titles(question: str, top_k: int = 3) -> List[str]:
+    items = retrieve_knowledge(question, top_k=top_k)
+    return [item["title"] for item in items if item.get("title")]

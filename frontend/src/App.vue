@@ -10,6 +10,7 @@
         @student-change="handleStudentChange"
         @create-student="handleCreateStudent"
         @export-report="handleExportReport"
+        @rebuild-rag="handleRebuildRag"
       />
 
       <TabNav
@@ -130,6 +131,45 @@
         </div>
       </template>
 
+      <template v-else-if="activeTab === 'graph'">
+  <div v-if="graphLoading" class="empty">知识图谱加载中...</div>
+
+  <div v-else-if="knowledgeGraph" class="report-panel">
+    <div class="result-card">
+      <div class="card-header">
+        <h2>学生知识图谱</h2>
+        <button class="retry-btn" @click="handleRebuildKnowledgeGraph">
+          重建图谱
+        </button>
+      </div>
+
+      <div v-if="knowledgeGraph.items.length === 0" class="empty">
+        暂无知识图谱数据
+      </div>
+
+      <div v-else class="graph-list">
+        <div v-for="(item, index) in knowledgeGraph.items" :key="index" class="graph-item">
+          <div class="graph-header">
+            <strong>{{ item.knowledge_name }}</strong>
+            <span class="weak-rate">错误率 {{ item.wrong_rate }}%</span>
+          </div>
+
+          <div class="graph-meta">
+            共练习 {{ item.total_count }} 次 / 正确 {{ item.correct_count }} 次 / 错误 {{ item.wrong_count }} 次
+          </div>
+
+          <div class="graph-bar">
+            <div
+              class="graph-bar-inner"
+              :style="{ width: `${Math.min(item.wrong_rate, 100)}%` }"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
       <template v-else>
         <div v-if="suggestionLoading" class="empty">学习建议加载中...</div>
 
@@ -204,12 +244,16 @@ import {
   type LearningReportResponse,
   type StudySuggestionResponse,
   type StudentItem,
+  getKnowledgeGraph,
+  rebuildKnowledgeGraph,
+  type KnowledgeGraphResponse,
+  rebuildRagIndex
 } from './api/math'
 const question = ref('')
 const loading = ref(false)
 const result = ref<(SolveResponse & { question: string }) | null>(null)
 
-const activeTab = ref<'solve' | 'history' | 'wrong' | 'report' | 'suggestion'>('solve')
+const activeTab = ref<'solve' | 'history' | 'wrong' | 'report' | 'suggestion' | 'graph'>('solve')
 const historyList = ref<HistoryItem[]>([])
 const wrongList = ref<HistoryItem[]>([])
 const imageLoading = ref(false)
@@ -229,7 +273,12 @@ const newStudentName = ref('')
 const suggestionLoading = ref(false)
 const studySuggestion = ref<StudySuggestionResponse | null>(null)
 
-const handleTabChange = async (tab: 'solve' | 'history' | 'wrong' | 'report' | 'suggestion') => {
+const graphLoading = ref(false)
+const knowledgeGraph = ref<KnowledgeGraphResponse | null>(null)
+
+const handleTabChange = async (
+  tab: 'solve' | 'history' | 'wrong' | 'report' | 'suggestion' | 'graph'
+) => {
   activeTab.value = tab
 
   if (tab === 'history') {
@@ -240,6 +289,8 @@ const handleTabChange = async (tab: 'solve' | 'history' | 'wrong' | 'report' | '
     await loadReport()
   } else if (tab === 'suggestion') {
     await loadStudySuggestion()
+  } else if (tab === 'graph') {
+    await loadKnowledgeGraph()
   }
 }
 
@@ -292,7 +343,8 @@ const handleSubmit = async () => {
     })
 
       await loadReport()
-    await loadStudySuggestion()
+      await loadStudySuggestion()
+    await loadKnowledgeGraph()
   } catch (error: any) {
     console.error('解析失败:', error)
     alert(error?.response?.data?.detail || '解析失败，请检查后端日志')
@@ -315,7 +367,8 @@ const toggleWrong = async (item: HistoryItem | (SolveResponse & { question: stri
     await loadHistory()
     await loadWrongList()
       await loadReport()
-    await loadStudySuggestion()
+      await loadStudySuggestion()
+    await loadKnowledgeGraph()
   } catch (error) {
     console.error(error)
     alert('更新错题状态失败')
@@ -360,7 +413,8 @@ const handleImageChange = async (event: Event) => {
     })
 
       await loadReport()
-    await loadStudySuggestion()
+      await loadStudySuggestion()
+    await loadKnowledgeGraph()
   } catch (error: any) {
     console.error('图片解析失败:', error)
     alert(error?.response?.data?.detail || '图片解析失败，请检查后端日志')
@@ -450,6 +504,7 @@ const refreshAllStudentData = async () => {
     loadWrongList(),
     loadReport(),
     loadStudySuggestion(),
+    loadKnowledgeGraph(),
   ])
 }
 
@@ -483,13 +538,54 @@ const handleExportReport = () => {
   window.open(url, '_blank')
 }
 
+const handleRebuildRag = async () => {
+  try {
+    const { data } = await rebuildRagIndex()
+    alert(data?.message || '知识库重建成功')
+  } catch (error: any) {
+    console.error('重建知识库失败:', error)
+    alert(error?.response?.data?.detail || '重建知识库失败')
+  }
+}
+
+const loadKnowledgeGraph = async () => {
+  graphLoading.value = true
+  try {
+    const { data } = await getKnowledgeGraph(currentStudentId.value)
+    knowledgeGraph.value = data
+  } catch (error: any) {
+    console.error('加载知识图谱失败:', error)
+    alert(error?.response?.data?.detail || '加载知识图谱失败')
+  } finally {
+    graphLoading.value = false
+  }
+}
+
+const switchToGraph = async () => {
+  activeTab.value = 'graph'
+  await loadKnowledgeGraph()
+}
+
+const handleRebuildKnowledgeGraph = async () => {
+  try {
+    await rebuildKnowledgeGraph(currentStudentId.value)
+    await loadKnowledgeGraph()
+    alert('知识图谱重建成功')
+  } catch (error: any) {
+    console.error('重建知识图谱失败:', error)
+    alert(error?.response?.data?.detail || '重建知识图谱失败')
+  }
+}
+
 onMounted(async () => {
 await loadStudents()
   await refreshAllStudentData()
   await loadHistory()
   await loadWrongList()
   await loadReport()
-  await loadStudySuggestion()
+    await loadStudySuggestion()
+  await loadStudents()
+  await refreshAllStudentData()
 })
 </script>
 
@@ -624,5 +720,39 @@ await loadStudents()
   margin-bottom: 12px;
   color: #333;
   line-height: 1.7;
+}
+.graph-list {
+  margin-top: 12px;
+}
+
+.graph-item {
+  padding: 16px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.graph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.graph-meta {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.graph-bar {
+  height: 10px;
+  background: #f0f0f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.graph-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, #f0a020, #d03050);
+  border-radius: 999px;
 }
 </style>
