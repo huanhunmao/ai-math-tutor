@@ -48,6 +48,7 @@ from app.knowledge_graph_service import (
     get_student_knowledge_graph,
 )
 from app.schemas import KnowledgeGraphResponse
+from app.learning_path_service import generate_learning_path
 
 Base.metadata.create_all(bind=engine)
 ensure_index_ready()
@@ -544,5 +545,23 @@ def rebuild_knowledge_graph(
     try:
         rebuild_student_knowledge_stat(db, student_id)
         return {"message": "知识图谱重建成功"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/learning-path")
+def get_learning_path(
+    student_id: int = Query(1),
+    db: Session = Depends(get_db),
+):
+
+    try:
+
+        path = generate_learning_path(db, student_id)
+
+        return {
+            "student_id": student_id,
+            "path": path
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

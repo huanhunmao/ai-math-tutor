@@ -184,3 +184,15 @@ export function rebuildKnowledgeGraph(student_id: number) {
     params: { student_id },
   });
 }
+
+export interface LearningPathItem {
+  knowledge_name: string;
+  wrong_rate: number;
+  suggestion: string;
+}
+
+export function getLearningPath(student_id: number) {
+  return request.get("/api/learning-path", {
+    params: { student_id },
+  });
+}

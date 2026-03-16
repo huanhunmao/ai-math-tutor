@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 defineProps<{
-  activeTab: 'solve' | 'history' | 'wrong' | 'report' | 'suggestion' | 'graph'
+  activeTab: 'solve' | 'history' | 'wrong' | 'report' | 'suggestion' | 'graph' | 'path'
 }>()
 
 defineEmits<{
@@ -27,6 +27,7 @@ const tabList = [
   { label: '学习报告', value: 'report' },
   { label: '学习建议', value: 'suggestion' },
   { label: '知识图谱', value: 'graph' },
+  { label: '学习路径', value: 'path' },
 ] as const
 </script>
 

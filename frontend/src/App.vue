@@ -170,6 +170,46 @@
   </div>
 </template>
 
+<template v-else-if="activeTab === 'path'">
+
+  <div v-if="pathLoading" class="empty">
+    学习路径生成中...
+  </div>
+
+  <div v-else class="report-panel">
+
+    <div class="result-card">
+
+      <h2>AI学习路径</h2>
+
+      <div
+        v-for="(item,index) in learningPath"
+        :key="index"
+        class="path-item"
+      >
+
+        <div class="path-header">
+
+          <strong>{{ index+1 }}. {{ item.knowledge_name }}</strong>
+
+          <span class="weak-rate">
+            错误率 {{ item.wrong_rate }}%
+          </span>
+
+        </div>
+
+        <div class="path-suggestion">
+          {{ item.suggestion }}
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</template>
+
       <template v-else>
         <div v-if="suggestionLoading" class="empty">学习建议加载中...</div>
 
@@ -247,7 +287,8 @@ import {
   getKnowledgeGraph,
   rebuildKnowledgeGraph,
   type KnowledgeGraphResponse,
-  rebuildRagIndex
+  rebuildRagIndex,
+  getLearningPath
 } from './api/math'
 const question = ref('')
 const loading = ref(false)
@@ -276,6 +317,9 @@ const studySuggestion = ref<StudySuggestionResponse | null>(null)
 const graphLoading = ref(false)
 const knowledgeGraph = ref<KnowledgeGraphResponse | null>(null)
 
+const learningPath = ref<any[]>([])
+const pathLoading = ref(false)
+
 const handleTabChange = async (
   tab: 'solve' | 'history' | 'wrong' | 'report' | 'suggestion' | 'graph'
 ) => {
@@ -291,7 +335,9 @@ const handleTabChange = async (
     await loadStudySuggestion()
   } else if (tab === 'graph') {
     await loadKnowledgeGraph()
-  }
+  }else if (tab === 'path') {
+  await loadLearningPath()
+ }
 }
 
 const handleGenerateWeakPractice = async (knowledgeName: string) => {
@@ -577,6 +623,26 @@ const handleRebuildKnowledgeGraph = async () => {
   }
 }
 
+const loadLearningPath = async () => {
+
+  pathLoading.value = true
+
+  try {
+
+    const { data } = await getLearningPath(currentStudentId.value)
+
+    learningPath.value = data.path
+
+  } catch (error:any) {
+
+    console.error(error)
+
+  } finally {
+
+    pathLoading.value = false
+  }
+}
+
 onMounted(async () => {
 await loadStudents()
   await refreshAllStudentData()
@@ -754,5 +820,20 @@ await loadStudents()
   height: 100%;
   background: linear-gradient(90deg, #f0a020, #d03050);
   border-radius: 999px;
+}
+.path-item{
+padding:16px 0;
+border-bottom:1px solid #eee;
+}
+
+.path-header{
+display:flex;
+justify-content:space-between;
+margin-bottom:8px;
+}
+
+.path-suggestion{
+color:#666;
+font-size:14px;
 }
 </style>
