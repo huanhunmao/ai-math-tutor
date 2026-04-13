@@ -1,7 +1,13 @@
 import axios from "axios";
 
+const normalizedApiBase = (
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_BASE ||
+  "/api"
+).replace(/\/+$/, "");
+
 const request = axios.create({
-  baseURL: "http://127.0.0.1:8000",
+  baseURL: normalizedApiBase,
   timeout: 30000,
 });
 
@@ -22,25 +28,25 @@ export interface HistoryItem {
 export type SolveResponse = HistoryItem;
 
 export function solveMathQuestion(data: SolveRequest, student_id: number) {
-  return request.post<SolveResponse>("/api/solve", data, {
+  return request.post<SolveResponse>("/solve", data, {
     params: { student_id },
   });
 }
 
 export function getHistoryList(student_id: number) {
-  return request.get<HistoryItem[]>("/api/history", {
+  return request.get<HistoryItem[]>("/history", {
     params: { student_id },
   });
 }
 
 export function getWrongQuestionList(student_id: number) {
-  return request.get<HistoryItem[]>("/api/wrong-questions", {
+  return request.get<HistoryItem[]>("/wrong-questions", {
     params: { student_id },
   });
 }
 
 export function markWrongQuestion(id: number, is_wrong: boolean) {
-  return request.patch<HistoryItem>(`/api/history/${id}/wrong`, { is_wrong });
+  return request.patch<HistoryItem>(`/history/${id}/wrong`, { is_wrong });
 }
 
 export interface OCRSolveResponse extends HistoryItem {
@@ -51,7 +57,7 @@ export interface OCRSolveResponse extends HistoryItem {
 export function solveMathImage(file: File, student_id: number) {
   const formData = new FormData();
   formData.append("file", file);
-  return request.post<OCRSolveResponse>("/api/solve-image", formData, {
+  return request.post<OCRSolveResponse>("/solve-image", formData, {
     params: { student_id },
     headers: {
       "Content-Type": "multipart/form-data",
@@ -81,7 +87,7 @@ export function generatePracticeByKnowledge(
   knowledge_point: string,
   count = 3,
 ) {
-  return request.post<GeneratePracticeResponse>("/api/generate-practice", {
+  return request.post<GeneratePracticeResponse>("/generate-practice", {
     knowledge_point,
     count,
   });
@@ -89,7 +95,7 @@ export function generatePracticeByKnowledge(
 
 export function regenerateQuestion(id: number) {
   return request.post<RegenerateQuestionResponse>(
-    `/api/history/${id}/regenerate`,
+    `/history/${id}/regenerate`,
   );
 }
 
@@ -115,7 +121,7 @@ export interface LearningReportResponse {
 }
 
 export function getLearningReport(student_id: number) {
-  return request.get<LearningReportResponse>("/api/report", {
+  return request.get<LearningReportResponse>("/report", {
     params: { student_id },
   });
 }
@@ -134,7 +140,7 @@ export interface StudySuggestionResponse {
 }
 
 export function getStudySuggestion(student_id: number) {
-  return request.get<StudySuggestionResponse>("/api/study-suggestion", {
+  return request.get<StudySuggestionResponse>("/study-suggestion", {
     params: { student_id },
   });
 }
@@ -145,19 +151,19 @@ export interface StudentItem {
 }
 
 export function getStudentList() {
-  return request.get<StudentItem[]>("/api/students");
+  return request.get<StudentItem[]>("/students");
 }
 
 export function createStudent(name: string) {
-  return request.post<StudentItem>("/api/students", { name });
+  return request.post<StudentItem>("/students", { name });
 }
 
 export function getExportReportUrl(student_id: number) {
-  return `http://127.0.0.1:8000/api/export/report?student_id=${student_id}`;
+  return `${normalizedApiBase}/export/report?student_id=${student_id}`;
 }
 
 export function rebuildRagIndex() {
-  return request.post("/api/rag/rebuild");
+  return request.post("/rag/rebuild");
 }
 
 export interface KnowledgeGraphItem {
@@ -174,13 +180,13 @@ export interface KnowledgeGraphResponse {
 }
 
 export function getKnowledgeGraph(student_id: number) {
-  return request.get<KnowledgeGraphResponse>("/api/knowledge-graph", {
+  return request.get<KnowledgeGraphResponse>("/knowledge-graph", {
     params: { student_id },
   });
 }
 
 export function rebuildKnowledgeGraph(student_id: number) {
-  return request.post("/api/knowledge-graph/rebuild", null, {
+  return request.post("/knowledge-graph/rebuild", null, {
     params: { student_id },
   });
 }
@@ -192,9 +198,12 @@ export interface LearningPathItem {
 }
 
 export function getLearningPath(student_id: number) {
-  return request.get("/api/learning-path", {
-    params: { student_id },
-  });
+  return request.get<{ student_id: number; path: LearningPathItem[] }>(
+    "/learning-path",
+    {
+      params: { student_id },
+    },
+  );
 }
 
 export interface PaperQuestionItem {
@@ -214,7 +223,7 @@ export function generatePaper(
   count = 10,
   difficulty = "中等",
 ) {
-  return request.post<GeneratePaperResponse>("/api/generate-paper", {
+  return request.post<GeneratePaperResponse>("/generate-paper", {
     knowledge_point,
     count,
     difficulty,
@@ -222,5 +231,5 @@ export function generatePaper(
 }
 
 export function getExportPaperUrl() {
-  return "http://127.0.0.1:8000/api/export/paper";
+  return `${normalizedApiBase}/export/paper`;
 }

@@ -270,7 +270,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import StudentBar from './components/StudentBar.vue'
 import TabNav from './components/TabNav.vue'
 import SolvePanel from './components/SolvePanel.vue'
@@ -302,15 +302,26 @@ import {
   getLearningPath,
   generatePaper,
   getExportPaperUrl,
-type GeneratePaperResponse,
+  type GeneratePaperResponse,
+  type LearningPathItem,
 } from './api/math'
 import PaperPanel from './components/PaperPanel.vue'
+
+type AppTab =
+  | 'solve'
+  | 'history'
+  | 'wrong'
+  | 'report'
+  | 'suggestion'
+  | 'graph'
+  | 'path'
+  | 'paper'
 
 const question = ref('')
 const loading = ref(false)
 const result = ref<(SolveResponse & { question: string }) | null>(null)
 
-const activeTab = ref<'solve' | 'history' | 'wrong' | 'report' | 'suggestion' | 'graph' | 'path' | 'paper'>('solve')
+const activeTab = ref<AppTab>('solve')
 const historyList = ref<HistoryItem[]>([])
 const wrongList = ref<HistoryItem[]>([])
 const imageLoading = ref(false)
@@ -333,7 +344,7 @@ const studySuggestion = ref<StudySuggestionResponse | null>(null)
 const graphLoading = ref(false)
 const knowledgeGraph = ref<KnowledgeGraphResponse | null>(null)
 
-const learningPath = ref<any[]>([])
+const learningPath = ref<LearningPathItem[]>([])
 const pathLoading = ref(false)
 
 const paperKnowledgePoint = ref('')
@@ -342,9 +353,7 @@ const paperDifficulty = ref('中等')
 const paperLoading = ref(false)
 const generatedPaper = ref<GeneratePaperResponse | null>(null)
 
-const handleTabChange = async (
-  tab: 'solve' | 'history' | 'wrong' | 'report' | 'suggestion' | 'graph'
-) => {
+const handleTabChange = async (tab: AppTab) => {
   activeTab.value = tab
 
   if (tab === 'history') {
@@ -357,11 +366,9 @@ const handleTabChange = async (
     await loadStudySuggestion()
   } else if (tab === 'graph') {
     await loadKnowledgeGraph()
-  }else if (tab === 'path') {
-  await loadLearningPath()
- }else if (tab === 'paper') {
-  activeTab.value = 'paper'
-}
+  } else if (tab === 'path') {
+    await loadLearningPath()
+  }
 }
 
 const handleGenerateWeakPractice = async (knowledgeName: string) => {
@@ -443,16 +450,6 @@ const toggleWrong = async (item: HistoryItem | (SolveResponse & { question: stri
     console.error(error)
     alert('更新错题状态失败')
   }
-}
-
-const switchToHistory = async () => {
-  activeTab.value = 'history'
-  await loadHistory()
-}
-
-const switchToWrong = async () => {
-  activeTab.value = 'wrong'
-  await loadWrongList()
 }
 
 const handleImageChange = async (event: Event) => {
@@ -539,16 +536,12 @@ const loadReport = async () => {
   }
 }
 
-const switchToReport = async () => {
-  activeTab.value = 'report'
-  await loadReport()
-}
-
 const loadStudents = async () => {
   const { data } = await getStudentList()
   studentList.value = data
-  if (!data.find(item => item.id === currentStudentId.value) && data.length) {
-    currentStudentId.value = data[0].id
+  const firstStudent = data[0]
+  if (!data.find(item => item.id === currentStudentId.value) && firstStudent) {
+    currentStudentId.value = firstStudent.id
   }
 }
 
@@ -598,14 +591,9 @@ const loadStudySuggestion = async () => {
   }
 }
 
-const switchToSuggestion = async () => {
-  activeTab.value = 'suggestion'
-  await loadStudySuggestion()
-}
-
 const handleExportReport = () => {
   const url = getExportReportUrl(currentStudentId.value)
-  window.open(url, '_blank')
+  window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 const handleRebuildRag = async () => {
@@ -631,11 +619,6 @@ const loadKnowledgeGraph = async () => {
   }
 }
 
-const switchToGraph = async () => {
-  activeTab.value = 'graph'
-  await loadKnowledgeGraph()
-}
-
 const handleRebuildKnowledgeGraph = async () => {
   try {
     await rebuildKnowledgeGraph(currentStudentId.value)
@@ -648,21 +631,13 @@ const handleRebuildKnowledgeGraph = async () => {
 }
 
 const loadLearningPath = async () => {
-
   pathLoading.value = true
-
   try {
-
     const { data } = await getLearningPath(currentStudentId.value)
-
     learningPath.value = data.path
-
-  } catch (error:any) {
-
+  } catch (error: any) {
     console.error(error)
-
   } finally {
-
     pathLoading.value = false
   }
 }
@@ -718,12 +693,6 @@ const handleExportPaper = async () => {
 }
 
 onMounted(async () => {
-await loadStudents()
-  await refreshAllStudentData()
-  await loadHistory()
-  await loadWrongList()
-  await loadReport()
-    await loadStudySuggestion()
   await loadStudents()
   await refreshAllStudentData()
 })
@@ -732,16 +701,38 @@ await loadStudents()
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #f5f7fa;
-  padding: 40px 16px;
+  background:
+    radial-gradient(circle at top, #eef6ff 0, #f5f7fa 42%, #eef3f8 100%);
+  padding: 24px 16px 40px;
 }
+
 .container {
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.96);
   padding: 24px;
-  border-radius: 12px;
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(31, 45, 61, 0.08);
+  backdrop-filter: blur(12px);
 }
+
+h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.9rem, 3vw, 2.6rem);
+  color: #162033;
+}
+
+.page :deep(h2),
+.page :deep(h3),
+.page :deep(h4) {
+  color: #162033;
+}
+
+.page :deep(p),
+.page :deep(li) {
+  word-break: break-word;
+}
+
 .submit-btn {
   margin-top: 16px;
   padding: 10px 18px;
@@ -806,6 +797,7 @@ await loadStudents()
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-bottom: 8px;
 }
 .recent-question {
@@ -845,6 +837,7 @@ await loadStudents()
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-bottom: 8px;
 }
 .weak-rate {
@@ -864,25 +857,22 @@ await loadStudents()
 .graph-list {
   margin-top: 12px;
 }
-
 .graph-item {
   padding: 16px 0;
   border-bottom: 1px solid #eee;
 }
-
 .graph-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-bottom: 8px;
 }
-
 .graph-meta {
   color: #666;
   font-size: 14px;
   margin-bottom: 10px;
 }
-
 .graph-bar {
   height: 10px;
   background: #f0f0f0;
@@ -895,19 +885,57 @@ await loadStudents()
   background: linear-gradient(90deg, #f0a020, #d03050);
   border-radius: 999px;
 }
-.path-item{
-padding:16px 0;
-border-bottom:1px solid #eee;
+
+.path-item {
+  padding: 16px 0;
+  border-bottom: 1px solid #eee;
 }
 
-.path-header{
-display:flex;
-justify-content:space-between;
-margin-bottom:8px;
+.path-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-.path-suggestion{
-color:#666;
-font-size:14px;
+.path-suggestion {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 12px 12px 28px;
+  }
+
+  .container {
+    padding: 18px 14px;
+    border-radius: 18px;
+  }
+
+  .report-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .recent-header,
+  .weak-header,
+  .graph-header,
+  .path-header,
+  .stat-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .report-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-card,
+  .result-card {
+    padding: 16px;
+  }
 }
 </style>

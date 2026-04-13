@@ -65,17 +65,27 @@ const onNameInput = (event: Event) => {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
   margin-bottom: 20px;
 }
 
 .student-select,
 .student-input {
   height: 40px;
+  min-width: 0;
   padding: 0 12px;
   border: 1px solid #ddd;
   border-radius: 8px;
   background: #fff;
   outline: none;
+}
+
+.student-select {
+  min-width: 150px;
+}
+
+.student-input {
+  flex: 1 1 220px;
 }
 
 .retry-btn {
@@ -94,5 +104,18 @@ const onNameInput = (event: Event) => {
   color: #fff;
   border-radius: 8px;
   cursor: pointer;
+}
+
+@media (max-width: 520px) {
+  .student-bar > * {
+    width: 100%;
+  }
+
+  .student-select,
+  .student-input,
+  .retry-btn,
+  .wrong-btn {
+    width: 100%;
+  }
 }
 </style>

@@ -2,28 +2,61 @@ import json
 import os
 from typing import List, Dict
 
+from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from sentence_transformers import SentenceTransformer
+
+load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 DATA_PATH = os.path.join(BASE_DIR, "data", "math_knowledge.json")
 QDRANT_PATH = os.path.join(BASE_DIR, "qdrant_data")
 COLLECTION_NAME = "math_knowledge"
+MODEL_NAME = os.getenv("RAG_MODEL_NAME", "BAAI/bge-small-zh-v1.5")
+RAG_ENABLED = os.getenv("RAG_ENABLED", "true").lower() not in {"0", "false", "off", "no"}
 
 _model = None
 _client = None
+_rag_error = None
+
+
+def is_rag_enabled() -> bool:
+    return RAG_ENABLED
+
+
+def get_rag_status() -> Dict[str, str | bool | None]:
+    return {
+        "enabled": RAG_ENABLED,
+        "ready": _rag_error is None,
+        "error": _rag_error,
+        "model": MODEL_NAME,
+    }
+
+
+def _mark_rag_error(error: Exception):
+    global _rag_error
+    _rag_error = str(error)
 
 
 def get_embedding_model():
-    global _model
+    global _model, _rag_error
+    if not RAG_ENABLED:
+        raise RuntimeError("RAG 功能已关闭，请设置 RAG_ENABLED=true 后重试")
     if _model is None:
-        _model = SentenceTransformer("BAAI/bge-small-zh-v1.5")
+        try:
+            _model = SentenceTransformer(MODEL_NAME)
+            _rag_error = None
+        except Exception as error:
+            _mark_rag_error(error)
+            raise
     return _model
 
 
 def get_qdrant_client():
     global _client
+    if not RAG_ENABLED:
+        raise RuntimeError("RAG 功能已关闭，请设置 RAG_ENABLED=true 后重试")
     if _client is None:
         _client = QdrantClient(path=QDRANT_PATH)
     return _client
@@ -62,6 +95,8 @@ def ensure_collection():
 
 
 def rebuild_index():
+    if not RAG_ENABLED:
+        raise RuntimeError("RAG 功能已关闭，无法重建索引")
     client = get_qdrant_client()
     model = get_embedding_model()
     ensure_collection()
@@ -103,6 +138,8 @@ def rebuild_index():
 
 
 def ensure_index_ready():
+    if not RAG_ENABLED:
+        return
     ensure_collection()
     client = get_qdrant_client()
     count_result = client.count(collection_name=COLLECTION_NAME, exact=True)
@@ -111,35 +148,42 @@ def ensure_index_ready():
 
 
 def retrieve_knowledge(question: str, top_k: int = 3):
-    ensure_index_ready()
+    if not RAG_ENABLED:
+        return []
 
-    client = get_qdrant_client()
-    model = get_embedding_model()
+    try:
+        ensure_index_ready()
 
-    query_vector = model.encode(question, normalize_embeddings=True).tolist()
+        client = get_qdrant_client()
+        model = get_embedding_model()
 
-    results = client.query_points(
-        collection_name=COLLECTION_NAME,
-        query=query_vector,
-        limit=top_k,
-        with_payload=True,
-    )
+        query_vector = model.encode(question, normalize_embeddings=True).tolist()
 
-    items = []
-
-    for item in results.points:
-        payload = item.payload or {}
-
-        items.append(
-            {
-                "title": payload.get("title", ""),
-                "keywords": payload.get("keywords", []),
-                "content": payload.get("content", ""),
-                "score": float(item.score),
-            }
+        results = client.query_points(
+            collection_name=COLLECTION_NAME,
+            query=query_vector,
+            limit=top_k,
+            with_payload=True,
         )
 
-    return items
+        items = []
+
+        for item in results.points:
+            payload = item.payload or {}
+
+            items.append(
+                {
+                    "title": payload.get("title", ""),
+                    "keywords": payload.get("keywords", []),
+                    "content": payload.get("content", ""),
+                    "score": float(item.score),
+                }
+            )
+
+        return items
+    except Exception as error:
+        _mark_rag_error(error)
+        return []
 
 
 def build_context(question: str, top_k: int = 3) -> str:

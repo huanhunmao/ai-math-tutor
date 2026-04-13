@@ -37,19 +37,36 @@ const tabList = [
   display: flex;
   gap: 12px;
   margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
 }
 
 .tab-btn {
+  flex: 0 0 auto;
   padding: 8px 16px;
   border: 1px solid #ddd;
   background: #fff;
   border-radius: 8px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .tab-btn.active {
   background: #18a058;
   color: #fff;
   border-color: #18a058;
+}
+
+@media (max-width: 520px) {
+  .tabs {
+    gap: 8px;
+    margin: 0 -2px 16px;
+  }
+
+  .tab-btn {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
 }
 </style>

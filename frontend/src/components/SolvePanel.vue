@@ -60,14 +60,14 @@
 
       <div v-if="regeneratedMap[result.id]" class="regenerated-box">
         <h3>再练一题</h3>
-        <p>{{ regeneratedMap[result.id].question }}</p>
+        <p>{{ regeneratedMap[result.id]?.question }}</p>
 
         <h3>答案</h3>
-        <p>{{ regeneratedMap[result.id].answer }}</p>
+        <p>{{ regeneratedMap[result.id]?.answer }}</p>
 
         <h3>步骤解析</h3>
         <ol>
-          <li v-for="(step, idx) in regeneratedMap[result.id].steps" :key="idx">
+          <li v-for="(step, idx) in regeneratedMap[result.id]?.steps ?? []" :key="idx">
             {{ step }}
           </li>
         </ol>
@@ -184,11 +184,13 @@ defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .card-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .retry-btn {
@@ -216,11 +218,13 @@ defineEmits<{
 .practice-form {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
 }
 
 .practice-input {
   flex: 1;
+  min-width: 220px;
   height: 40px;
   padding: 0 12px;
   border: 1px solid #ddd;
@@ -237,5 +241,14 @@ defineEmits<{
   padding: 16px;
   background: #f0f7ff;
   border-radius: 8px;
+}
+
+@media (max-width: 520px) {
+  .upload-btn,
+  .submit-btn,
+  .practice-input,
+  .practice-form .submit-btn {
+    width: 100%;
+  }
 }
 </style>

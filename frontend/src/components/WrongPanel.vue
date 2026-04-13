@@ -38,14 +38,14 @@
 
       <div v-if="regeneratedMap[item.id]" class="regenerated-box">
         <h3>再练一题</h3>
-        <p>{{ regeneratedMap[item.id].question }}</p>
+        <p>{{ regeneratedMap[item.id]?.question }}</p>
 
         <h3>答案</h3>
-        <p>{{ regeneratedMap[item.id].answer }}</p>
+        <p>{{ regeneratedMap[item.id]?.answer }}</p>
 
         <h3>步骤解析</h3>
         <ol>
-          <li v-for="(step, idx) in regeneratedMap[item.id].steps" :key="idx">
+          <li v-for="(step, idx) in regeneratedMap[item.id]?.steps ?? []" :key="idx">
             {{ step }}
           </li>
         </ol>
@@ -88,11 +88,13 @@ defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .card-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .retry-btn {
@@ -118,5 +120,12 @@ defineEmits<{
   padding: 16px;
   background: #f0f7ff;
   border-radius: 8px;
+}
+
+@media (max-width: 520px) {
+  .retry-btn,
+  .wrong-btn {
+    width: 100%;
+  }
 }
 </style>

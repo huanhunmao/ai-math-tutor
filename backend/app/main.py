@@ -1,5 +1,6 @@
 import os
 import tempfile
+from dotenv import load_dotenv
 from fastapi import File, UploadFile
 from app.ocr_service import extract_text_from_image
 from app.schemas import OCRSolveResponse
@@ -40,7 +41,7 @@ from app.schemas import StudentItem, CreateStudentRequest
 
 from fastapi.responses import HTMLResponse
 from app.database import SessionLocal
-from app.rag_service import rebuild_index, ensure_index_ready
+from app.rag_service import rebuild_index, get_rag_status
 
 from app.knowledge_graph_service import (
     update_student_knowledge_stat,
@@ -54,10 +55,16 @@ from app.paper_service import generate_paper
 from app.schemas import GeneratePaperRequest, GeneratePaperResponse
 from fastapi import Query, Depends, HTTPException, File, UploadFile, Form
 
+load_dotenv()
+
 Base.metadata.create_all(bind=engine)
-ensure_index_ready()
 
-
+def get_allowed_origins():
+    raw_origins = os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    )
+    return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
 with SessionLocal() as db:
     ensure_default_student(db)
@@ -66,7 +73,7 @@ app = FastAPI(title="AI Math Tutor API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -75,7 +82,10 @@ app.add_middleware(
 
 @app.get("/")
 def health():
-    return {"message": "AI Math Tutor API is running"}
+    return {
+        "message": "AI Math Tutor API is running",
+        "rag": get_rag_status(),
+    }
 
 
 @app.post("/api/solve", response_model=SolveQuestionResponse)

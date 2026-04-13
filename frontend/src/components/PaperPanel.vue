@@ -141,4 +141,18 @@ defineEmits<{
   padding: 16px 0;
   border-bottom: 1px solid #eee;
 }
+
+@media (max-width: 520px) {
+  .paper-form > * {
+    width: 100%;
+  }
+
+  .paper-input,
+  .paper-count,
+  .paper-select,
+  .submit-btn,
+  .retry-btn {
+    width: 100%;
+  }
+}
 </style>
