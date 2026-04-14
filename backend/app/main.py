@@ -2,7 +2,6 @@ import os
 import tempfile
 from dotenv import load_dotenv
 from fastapi import File, UploadFile
-from app.ocr_service import extract_text_from_image
 from app.schemas import OCRSolveResponse
 import json
 from fastapi import FastAPI, Depends, HTTPException
@@ -217,6 +216,8 @@ async def solve_image(
     student_id: int = Query(1),
     db: Session = Depends(get_db)
 ):
+    from app.ocr_service import extract_text_from_image
+
     temp_path = None
     try:
         suffix = os.path.splitext(file.filename or "")[-1] or ".png"

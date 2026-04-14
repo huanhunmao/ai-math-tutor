@@ -1,5 +1,5 @@
 import json
-from app.llm_service import client, MODEL
+from app.llm_service import get_model_name, get_openai_client
 from app.rag_service import build_context
 
 
@@ -43,6 +43,8 @@ def _clean_json_text(content: str) -> str:
 
 
 def generate_practice_by_knowledge(knowledge_point: str, count: int = 3):
+    client = get_openai_client()
+    model_name = get_model_name()
     context = build_context(knowledge_point)
 
     user_content = (
@@ -54,7 +56,7 @@ def generate_practice_by_knowledge(knowledge_point: str, count: int = 3):
         user_content += f"\n\n可参考知识库内容：\n{context}"
 
     resp = client.chat.completions.create(
-        model=MODEL,
+        model=model_name,
         temperature=0.5,
         messages=[
             {"role": "system", "content": PRACTICE_SYSTEM_PROMPT},
@@ -75,6 +77,8 @@ def generate_practice_by_knowledge(knowledge_point: str, count: int = 3):
 
 
 def regenerate_similar_question(source_question: str):
+    client = get_openai_client()
+    model_name = get_model_name()
     context = build_context(source_question)
 
     user_content = (
@@ -86,7 +90,7 @@ def regenerate_similar_question(source_question: str):
         user_content += f"\n\n可参考知识库内容：\n{context}"
 
     resp = client.chat.completions.create(
-        model=MODEL,
+        model=model_name,
         temperature=0.5,
         messages=[
             {"role": "system", "content": PRACTICE_SYSTEM_PROMPT},

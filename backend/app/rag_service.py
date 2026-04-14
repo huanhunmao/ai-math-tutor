@@ -3,9 +3,16 @@ import os
 from typing import List, Dict
 
 from dotenv import load_dotenv
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
-from sentence_transformers import SentenceTransformer
+try:
+    from qdrant_client import QdrantClient
+    from qdrant_client.models import Distance, VectorParams, PointStruct
+    from sentence_transformers import SentenceTransformer
+except Exception as error:
+    QdrantClient = None
+    Distance = VectorParams = PointStruct = SentenceTransformer = None
+    _rag_import_error = error
+else:
+    _rag_import_error = None
 
 load_dotenv()
 
@@ -28,8 +35,8 @@ def is_rag_enabled() -> bool:
 def get_rag_status() -> Dict[str, str | bool | None]:
     return {
         "enabled": RAG_ENABLED,
-        "ready": _rag_error is None,
-        "error": _rag_error,
+        "ready": _rag_error is None and _rag_import_error is None,
+        "error": _rag_error or (str(_rag_import_error) if _rag_import_error else None),
         "model": MODEL_NAME,
     }
 
@@ -43,6 +50,10 @@ def get_embedding_model():
     global _model, _rag_error
     if not RAG_ENABLED:
         raise RuntimeError("RAG 功能已关闭，请设置 RAG_ENABLED=true 后重试")
+    if SentenceTransformer is None:
+        raise RuntimeError(
+            f"RAG 依赖未安装或当前环境不支持：{_rag_import_error}"
+        )
     if _model is None:
         try:
             _model = SentenceTransformer(MODEL_NAME)
@@ -57,6 +68,10 @@ def get_qdrant_client():
     global _client
     if not RAG_ENABLED:
         raise RuntimeError("RAG 功能已关闭，请设置 RAG_ENABLED=true 后重试")
+    if QdrantClient is None:
+        raise RuntimeError(
+            f"RAG 依赖未安装或当前环境不支持：{_rag_import_error}"
+        )
     if _client is None:
         _client = QdrantClient(path=QDRANT_PATH)
     return _client

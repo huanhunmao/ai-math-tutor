@@ -1,5 +1,5 @@
 import json
-from app.llm_service import client, MODEL
+from app.llm_service import get_model_name, get_openai_client
 from app.rag_service import build_context
 
 
@@ -44,6 +44,8 @@ def _clean_json_text(content: str) -> str:
 
 
 def generate_paper(knowledge_point: str, count: int = 10, difficulty: str = "中等"):
+    client = get_openai_client()
+    model_name = get_model_name()
     context = build_context(knowledge_point, top_k=3)
 
     user_content = (
@@ -56,7 +58,7 @@ def generate_paper(knowledge_point: str, count: int = 10, difficulty: str = "中
         user_content += f"\n\n以下是可参考的知识库内容：\n{context}"
 
     resp = client.chat.completions.create(
-        model=MODEL,
+        model=model_name,
         temperature=0.5,
         messages=[
             {"role": "system", "content": PAPER_SYSTEM_PROMPT},

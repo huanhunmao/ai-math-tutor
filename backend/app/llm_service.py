@@ -10,10 +10,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
 MODEL = os.getenv("OPENAI_MODEL", "moonshot-v1-8k")
 
-client = OpenAI(
-    api_key=OPENAI_API_KEY,
-    base_url=OPENAI_BASE_URL,
-)
+_client = None
 
 SYSTEM_PROMPT = """
 你是一位专业的初中数学辅导老师。
@@ -36,12 +33,8 @@ SYSTEM_PROMPT = """
 
 
 def solve_math_question(question: str):
-    if not OPENAI_API_KEY:
-        raise ValueError("未读取到 OPENAI_API_KEY")
-    if not OPENAI_BASE_URL:
-        raise ValueError("未读取到 OPENAI_BASE_URL")
-    if not MODEL:
-        raise ValueError("未读取到 OPENAI_MODEL")
+    client = get_openai_client()
+    model_name = get_model_name()
 
     context = build_context(question, top_k=3)
     matched_knowledge = get_knowledge_titles(question, top_k=3)
@@ -51,7 +44,7 @@ def solve_math_question(question: str):
         user_content += f"\n\n以下是从数学知识库中检索到的参考内容，请优先基于这些内容解答：\n{context}"
 
     resp = client.chat.completions.create(
-        model=MODEL,
+        model=model_name,
         temperature=0.3,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -88,3 +81,23 @@ def solve_math_question(question: str):
 
     data["matched_knowledge"] = matched_knowledge
     return data
+
+
+def get_model_name() -> str:
+    if not MODEL:
+        raise ValueError("未读取到 OPENAI_MODEL")
+    return MODEL
+
+
+def get_openai_client() -> OpenAI:
+    global _client
+    if not OPENAI_API_KEY:
+        raise ValueError("未读取到 OPENAI_API_KEY")
+    if not OPENAI_BASE_URL:
+        raise ValueError("未读取到 OPENAI_BASE_URL")
+    if _client is None:
+        _client = OpenAI(
+            api_key=OPENAI_API_KEY,
+            base_url=OPENAI_BASE_URL,
+        )
+    return _client
