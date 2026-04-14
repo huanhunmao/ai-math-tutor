@@ -12,6 +12,8 @@ backend/__pycache__
 backend/.env
 backend/math_tutor.db
 backend/*.db
+math_tutor.db
+*.sqlite3
 
 # python cache
 *.pyc

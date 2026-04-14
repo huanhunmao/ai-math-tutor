@@ -81,7 +81,8 @@ AI Math Tutor 旨在帮助学生更高效地完成数学练习、错题整理和
 ### 后端
 - FastAPI
 - SQLAlchemy
-- SQLite
+- SQLite（本地开发）
+- PostgreSQL（推荐生产环境）
 
 ### AI / OCR
 - OpenAI Compatible API / Moonshot
@@ -123,6 +124,19 @@ ai-math-tutor/
 ├── .gitignore
 └── README.md
 ````
+
+---
+
+## 推荐部署架构
+
+- 前端：Vercel
+- 后端：Render
+- 数据库：Render PostgreSQL
+
+不建议把当前后端完整能力直接长期跑在 Vercel Serverless 上，因为项目包含本地数据库、OCR 与可选 RAG 能力。当前仓库已经兼容：
+
+- 本地开发默认使用 SQLite
+- 线上部署优先使用 `DATABASE_URL` 指向 PostgreSQL
 
 ---
 
@@ -183,6 +197,7 @@ pip install fastapi uvicorn python-dotenv openai sqlalchemy pillow paddlepaddle=
 OPENAI_API_KEY=你的key
 OPENAI_BASE_URL=https://api.moonshot.cn/v1
 OPENAI_MODEL=moonshot-v1-8k
+RAG_ENABLED=false
 ```
 
 启动后端：
@@ -235,6 +250,8 @@ http://127.0.0.1:5173
 OPENAI_API_KEY=你的key
 OPENAI_BASE_URL=https://api.moonshot.cn/v1
 OPENAI_MODEL=moonshot-v1-8k
+DATABASE_URL=
+RAG_ENABLED=false
 ```
 
 字段说明：
@@ -242,6 +259,50 @@ OPENAI_MODEL=moonshot-v1-8k
 * `OPENAI_API_KEY`：大模型接口密钥
 * `OPENAI_BASE_URL`：兼容 OpenAI 的模型服务地址
 * `OPENAI_MODEL`：模型名称
+* `DATABASE_URL`：生产环境推荐填写 PostgreSQL 连接串；为空时本地默认使用 SQLite
+* `RAG_ENABLED`：线上建议先关闭，等外部向量存储准备好后再开启
+
+---
+
+## 线上部署
+
+### 前端部署到 Vercel
+
+前端项目设置：
+
+```text
+Root Directory: frontend
+Framework Preset: Vite
+Build Command: npm run build
+Output Directory: dist
+Node.js Version: 20.x
+```
+
+前端环境变量：
+
+```env
+VITE_API_BASE=https://你的后端域名
+```
+
+### 后端部署到 Render
+
+仓库已提供 [render.yaml](render.yaml)。
+
+后端环境变量至少需要：
+
+```env
+OPENAI_API_KEY=你的key
+OPENAI_BASE_URL=https://api.moonshot.cn/v1
+OPENAI_MODEL=moonshot-v1-8k
+RAG_ENABLED=false
+CORS_ORIGINS=https://你的前端域名
+```
+
+如果需要兼容 Vercel preview 域名，可以额外配置：
+
+```env
+CORS_ORIGIN_REGEX=https://.*\.vercel\.app
+```
 
 ---
 
@@ -363,7 +424,6 @@ MIT
 [拍照识题 OCR](https://juejin.cn/post/7615144848145137673)
 
 [错题再练一题 + 知识点练习 ](https://juejin.cn/spost/7615919828886618150)
-
 
 
 
