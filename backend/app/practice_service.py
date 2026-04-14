@@ -8,6 +8,12 @@ PRACTICE_SYSTEM_PROMPT = """
 
 请严格返回 JSON，不要返回 markdown，不要加 ```json。
 
+如果题目涉及几何图形，请优先生成便于页面渲染示意图的题目表达：
+1. 在 question 中直接写明图形名称，例如圆、扇形、长方形、正方形、三角形、梯形、坐标系。
+2. 在 question 中直接写明关键尺寸或条件，例如半径 4 厘米、底 6 高 4、直角边长分别为 3 和 4。
+3. 不要依赖“如图所示”“见下图”这类页面外图片描述，题干本身必须完整。
+4. 如果是坐标系题，请在 question 中明确点的坐标或函数关系。
+
 如果用户要求生成练习题，请返回：
 {
   "knowledge_point": "知识点名称",
@@ -52,6 +58,13 @@ def generate_practice_by_knowledge(knowledge_point: str, count: int = 3):
         "每道题都要包含题目、答案、分步解析。"
     )
 
+    if any(keyword in knowledge_point for keyword in ["几何", "圆", "三角形", "长方形", "矩形", "正方形", "梯形", "坐标"]):
+        user_content += (
+            " 这些题请优先生成为带明确图形信息的题目："
+            "题干中直接写出图形名称、边长、半径、直径、高、角度或坐标，"
+            "避免使用“如图所示”。"
+        )
+
     if context:
         user_content += f"\n\n可参考知识库内容：\n{context}"
 
@@ -85,6 +98,12 @@ def regenerate_similar_question(source_question: str):
         f"基于下面这道题，生成 1 道同类型、同难度、但数字不同的新题，并给出答案和分步解析：\n"
         f"{source_question}"
     )
+
+    if any(keyword in source_question for keyword in ["圆", "扇形", "三角形", "长方形", "矩形", "正方形", "梯形", "坐标"]):
+        user_content += (
+            "\n请保留原题的图形类型，并在新题题干中明确写出图形名称和关键尺寸或坐标，"
+            "不要使用“如图所示”。"
+        )
 
     if context:
         user_content += f"\n\n可参考知识库内容：\n{context}"

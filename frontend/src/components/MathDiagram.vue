@@ -23,6 +23,31 @@
     </svg>
 
     <svg
+      v-else-if="diagram.type === 'sector'"
+      viewBox="0 0 220 150"
+      class="diagram-svg"
+      aria-label="扇形示意图"
+    >
+      <path d="M110 80 L160 80 A50 50 0 0 0 145 42 Z" class="shape-fill" />
+      <line x1="110" y1="80" x2="160" y2="80" class="shape-line" />
+      <line x1="110" y1="80" x2="145" y2="42" class="shape-line" />
+      <text x="112" y="76" class="shape-text">O</text>
+      <text x="151" y="92" class="shape-text">r</text>
+      <text x="126" y="67" class="shape-text">θ</text>
+    </svg>
+
+    <svg
+      v-else-if="diagram.type === 'square'"
+      viewBox="0 0 220 150"
+      class="diagram-svg"
+      aria-label="正方形示意图"
+    >
+      <rect x="60" y="30" width="90" height="90" rx="8" class="shape-fill" />
+      <line x1="60" y1="130" x2="150" y2="130" class="shape-line" />
+      <text x="100" y="146" class="shape-text">a</text>
+    </svg>
+
+    <svg
       v-else-if="diagram.type === 'rectangle'"
       viewBox="0 0 220 150"
       class="diagram-svg"
@@ -33,6 +58,36 @@
       <line x1="180" y1="36" x2="180" y2="112" class="shape-line" />
       <text x="104" y="138" class="shape-text">长</text>
       <text x="186" y="80" class="shape-text">宽</text>
+    </svg>
+
+    <svg
+      v-else-if="diagram.type === 'trapezoid'"
+      viewBox="0 0 220 150"
+      class="diagram-svg"
+      aria-label="梯形示意图"
+    >
+      <polygon points="70,36 150,36 182,112 38,112" class="shape-fill" />
+      <line x1="70" y1="126" x2="150" y2="126" class="shape-line" />
+      <line x1="186" y1="36" x2="186" y2="112" class="shape-line dashed" />
+      <text x="102" y="142" class="shape-text">下底</text>
+      <text x="190" y="78" class="shape-text">高</text>
+    </svg>
+
+    <svg
+      v-else-if="diagram.type === 'coordinate'"
+      viewBox="0 0 220 150"
+      class="diagram-svg"
+      aria-label="坐标系示意图"
+    >
+      <line x1="30" y1="118" x2="190" y2="118" class="shape-line" />
+      <line x1="56" y1="134" x2="56" y2="18" class="shape-line" />
+      <line x1="56" y1="118" x2="128" y2="54" class="shape-line dashed" />
+      <circle cx="56" cy="118" r="4" class="point-fill" />
+      <circle cx="128" cy="54" r="4" class="point-fill" />
+      <text x="194" y="122" class="shape-text">x</text>
+      <text x="60" y="22" class="shape-text">y</text>
+      <text x="44" y="132" class="shape-text">O</text>
+      <text x="132" y="48" class="shape-text">A</text>
     </svg>
 
     <svg
@@ -121,5 +176,9 @@ const diagram = computed(() => getDiagramData(props.question));
   fill: #22354a;
   font-size: 14px;
   font-weight: 700;
+}
+
+.point-fill {
+  fill: #f08c00;
 }
 </style>

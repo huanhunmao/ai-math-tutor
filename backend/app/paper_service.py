@@ -27,6 +27,8 @@ PAPER_SYSTEM_PROMPT = """
 3. steps 必须适合初中学生理解
 4. 题目难度要和用户要求一致
 5. 不要输出 JSON 以外的内容
+6. 如果是几何题，请在题干中直接写明图形名称与关键条件，不要写“如图所示”
+7. 如果是坐标系题，请在题干中直接写明点坐标、线段关系或函数关系
 """
 
 
@@ -53,6 +55,13 @@ def generate_paper(knowledge_point: str, count: int = 10, difficulty: str = "中
         f"题量为 {count} 题，难度为“{difficulty}”。"
         "每道题都需要包含题目、答案、分步解析。"
     )
+
+    if any(keyword in knowledge_point for keyword in ["几何", "圆", "三角形", "长方形", "矩形", "正方形", "梯形", "坐标"]):
+        user_content += (
+            " 请优先生成能够直接用文字描述图形的题目："
+            "在题干中明确写出图形名称，以及边长、半径、直径、高、角度或坐标等关键条件，"
+            "不要把核心信息放到“见图”里。"
+        )
 
     if context:
         user_content += f"\n\n以下是可参考的知识库内容：\n{context}"
