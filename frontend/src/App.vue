@@ -306,6 +306,7 @@ import {
   type LearningPathItem,
 } from './api/math'
 import PaperPanel from './components/PaperPanel.vue'
+import { extractTextInBrowser } from './utils/browserOcr'
 
 type AppTab =
   | 'solve'
@@ -352,6 +353,32 @@ const paperCount = ref(10)
 const paperDifficulty = ref('中等')
 const paperLoading = ref(false)
 const generatedPaper = ref<GeneratePaperResponse | null>(null)
+
+const refreshAfterSolve = async () => {
+  const refreshResults = await Promise.allSettled([
+    loadHistory(),
+    loadWrongList(),
+  ])
+
+  refreshResults.forEach((item) => {
+    if (item.status === 'rejected') {
+      console.error('刷新列表失败:', item.reason)
+    }
+  })
+
+  await loadReport()
+  await loadStudySuggestion()
+  await loadKnowledgeGraph()
+}
+
+const applySolveResult = (data: SolveResponse, currentQuestion: string) => {
+  result.value = {
+    ...data,
+    question: currentQuestion,
+  }
+
+  activeTab.value = 'solve'
+}
 
 const handleTabChange = async (tab: AppTab) => {
   activeTab.value = tab
@@ -400,28 +427,8 @@ const handleSubmit = async () => {
 
     console.log('solve result:', data)
 
-    result.value = {
-      ...data,
-      question: currentQuestion,
-    }
-
-    activeTab.value = 'solve'
-
-    // 历史记录 / 错题本刷新失败，不影响主结果展示
-    const refreshResults = await Promise.allSettled([
-      loadHistory(),
-      loadWrongList(),
-    ])
-
-    refreshResults.forEach((item) => {
-      if (item.status === 'rejected') {
-        console.error('刷新列表失败:', item.reason)
-      }
-    })
-
-      await loadReport()
-      await loadStudySuggestion()
-    await loadKnowledgeGraph()
+    applySolveResult(data, currentQuestion)
+    await refreshAfterSolve()
   } catch (error: any) {
     console.error('解析失败:', error)
     alert(error?.response?.data?.detail || '解析失败，请检查后端日志')
@@ -460,31 +467,36 @@ const handleImageChange = async (event: Event) => {
   imageLoading.value = true
   try {
     const { data } = await solveMathImage(file, currentStudentId.value)
-
-    result.value = {
-      ...data,
-      question: data.question,
-    }
-
-    activeTab.value = 'solve'
-
-    const refreshResults = await Promise.allSettled([
-      loadHistory(),
-      loadWrongList(),
-    ])
-
-    refreshResults.forEach((item) => {
-      if (item.status === 'rejected') {
-        console.error('刷新列表失败:', item.reason)
-      }
-    })
-
-      await loadReport()
-      await loadStudySuggestion()
-    await loadKnowledgeGraph()
+    question.value = data.question
+    applySolveResult(data, data.question)
+    await refreshAfterSolve()
   } catch (error: any) {
-    console.error('图片解析失败:', error)
-    alert(error?.response?.data?.detail || '图片解析失败，请检查后端日志')
+    console.error('图片解析失败，尝试浏览器 OCR 回退:', error)
+
+    try {
+      const extractedText = await extractTextInBrowser(file)
+      if (!extractedText) {
+        throw new Error('浏览器 OCR 未识别到题目内容')
+      }
+
+      question.value = extractedText
+      const { data } = await solveMathQuestion(
+        { question: extractedText },
+        currentStudentId.value,
+      )
+
+      applySolveResult(data, extractedText)
+      await refreshAfterSolve()
+      alert('已自动切换到浏览器 OCR 识题')
+    } catch (fallbackError: any) {
+      console.error('浏览器 OCR 回退失败:', fallbackError)
+      alert(
+        fallbackError?.response?.data?.detail ||
+          fallbackError?.message ||
+          error?.response?.data?.detail ||
+          '图片解析失败，请检查后端日志',
+      )
+    }
   } finally {
     imageLoading.value = false
     target.value = ''

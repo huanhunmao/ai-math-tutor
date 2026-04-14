@@ -47,6 +47,7 @@
       <div v-for="(item, index) in paper.questions" :key="index" class="paper-question">
         <h3>第 {{ index + 1 }} 题</h3>
         <p>{{ item.question }}</p>
+        <MathDiagram :question="item.question" />
 
         <h4>答案</h4>
         <p>{{ item.answer }}</p>
@@ -61,6 +62,7 @@
 </template>
 
 <script setup lang="ts">
+import MathDiagram from './MathDiagram.vue'
 import type { GeneratePaperResponse } from '../api/math'
 
 defineProps<{

@@ -41,6 +41,7 @@
 
       <h3>题目</h3>
       <p>{{ result.question }}</p>
+      <MathDiagram :question="result.question" />
 
       <h3>答案</h3>
       <p>{{ result.answer }}</p>
@@ -61,6 +62,10 @@
       <div v-if="regeneratedMap[result.id]" class="regenerated-box">
         <h3>再练一题</h3>
         <p>{{ regeneratedMap[result.id]?.question }}</p>
+        <MathDiagram
+          v-if="regeneratedMap[result.id]?.question"
+          :question="regeneratedMap[result.id]?.question ?? ''"
+        />
 
         <h3>答案</h3>
         <p>{{ regeneratedMap[result.id]?.answer }}</p>
@@ -92,6 +97,7 @@
         <div v-for="(item, index) in practiceList" :key="index" class="result-card">
           <h3>练习题 {{ index + 1 }}</h3>
           <p>{{ item.question }}</p>
+          <MathDiagram :question="item.question" />
 
           <h3>答案</h3>
           <p>{{ item.answer }}</p>
@@ -107,6 +113,7 @@
 </template>
 
 <script setup lang="ts">
+import MathDiagram from './MathDiagram.vue'
 import type { PracticeQuestionItem, SolveResponse } from '../api/math'
 
 defineProps<{
